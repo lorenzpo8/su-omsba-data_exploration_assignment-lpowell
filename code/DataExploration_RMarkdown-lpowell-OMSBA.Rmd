@@ -1,0 +1,163 @@
+---
+title: "Data Exploration Assignment"
+author: "Lorenzo Powell"
+date: "2022-08-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Since the release of the College Scorecard in September 2015 student enrollment has been directed towards high-earning institutions.
+
+
+Load the necessary packages 
+```{r packages, echo = FALSE, warning=FALSE, error=FALSE}
+library(tidyverse)
+library(fixest)
+library(vtable)
+library(Ecdat)
+library(wooldridge)
+library(ggplot2)
+library(ggstance)
+library(NHANES)
+library(dagitty)
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(lubridate)
+
+```
+
+Load the data files from github repository
+```{r Load Data, echo = FALSE, warning=FALSE, error=FALSE, collapse=TRUE}
+
+scorecard <-scorecard <- read_csv('../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/Most+Recent+Cohorts+(Scorecard+Elements).csv') %>%
+  rename(opeid = OPEID) %>%
+  rename(unitid = UNITID) %>%
+  rename(md_earn_wne_p10 = 'md_earn_wne_p10-REPORTED-EARNINGS')
+  
+name_link <- read_csv('../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/id_name_link.csv')  %>%
+  group_by(schname) %>%
+  mutate(n = n()) %>%
+  filter(n == 1)
+
+TUT_files <- list.files(path = '../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/',
+                       pattern = 'trends_up_to_', full.names = TRUE)
+
+TUT_map <- map_df(TUT_files, read_csv)
+
+```
+
+
+The following served as my base mutations of the provided data sets. Very little was changed, the goal was to use these data-frames as references during my analysis.
+
+```{r Mutations, echo = TRUE, warning=FALSE, error=FALSE}
+# Trends Up TO (TUT) files were compiled in TUT_map // this mutation only serves to ease sorting 
+TUT_mutate <- TUT_map %>%
+    mutate(start_mo_week = ymd(str_sub(monthorweek, start = 0, end = 10))) %>%
+    group_by(schname, keyword)
+
+# Mean & SD of all index's
+index_mean <- mean(as.numeric(TUT_mutate$index), na.rm = TRUE)
+index_sd <- sd(as.numeric(TUT_mutate$index), na.rm = TRUE)
+
+# Standardized TUT files
+TUT_standard <- TUT_mutate %>%
+  group_by(schname, keyword) %>%
+  mutate(index_stand = ((index - index_mean)/index_sd)) %>%
+  mutate(start_year = floor_date(start_mo_week, 'year'))
+
+# Merge of all exploratory data sets including standardized values
+big_merge_stand <- inner_join(name_link, TUT_standard, by = 'schname')
+big_merge_stand <- inner_join(big_merge_stand, scorecard, by = 'opeid')
+
+# Annualized Merge Data 
+merge2013 <- big_merge_stand %>%
+  filter(start_year == '2013-01-01')
+merge2014 <- big_merge_stand %>%
+  filter(start_year == '2014-01-01')
+merge2015 <- big_merge_stand %>%
+  filter(start_year == '2015-01-01')
+merge2016 <- big_merge_stand %>%
+  filter(start_year == '2016-01-01')
+
+```
+
+
+Over time, the average 10-year earnings after enrollment is expected to change by -0.037 units; however, when controlling for the standardized-index value there will be a 0.4274 unit change for a 1 unit increase in enrollment year. When controlling for standardized-index, our hypothesis supported at the 5% significance level.
+```{r Enrollment Year & Earnings, echo = TRUE, warning=FALSE, error=FALSE}
+# Year o enrollment has a significant negative association with 10 year earnings // we see the opposite relationship in the setting of index rating of 
+year_start_earn <- feols(as.numeric(md_earn_wne_p10) ~ start_year, data = big_merge_stand)
+year_start_earn_con_ind <- feols(as.numeric(md_earn_wne_p10) ~ start_year | index_stand, data = big_merge_stand)
+
+etable(year_start_earn, year_start_earn_con_ind)
+summary(year_start_earn_con_ind)
+
+```
+
+
+```{r Earnings & Debt, echo = TRUE, warning=FALSE, error=FALSE}
+# MEDIAN EARNINGS ASSOCIATED W/ DEBT
+
+med_earn_debt_school_df <- distinct(select(big_merge_stand, schname, md_earn_wne_p10, GRAD_DEBT_MDN_SUPP))
+med_earn_debt_school_fe_reg <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 | schname, data = big_merge_stand)
+
+```
+
+
+```{r Standardized Index Ratings & Enrollment Period, echo = TRUE, warning=FALSE, error=FALSE}
+# Index by time
+date_index <- select(big_merge_stand, schname, schid, start_mo_week, start_year, index, index_stand) %>%
+  mutate(start_year = floor_date(start_mo_week, 'year')) %>%
+  group_by(start_year)
+date_index2013 <- date_index %>%
+  filter(start_year == '2013-01-01') #%>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+date_index2014 <- date_index %>%
+  filter(start_year == '2014-01-01')# %>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+date_index2015 <- date_index %>%
+  filter(start_year == '2015-01-01') # %>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+date_index2016 <- date_index %>%
+  filter(start_year == '2016-01-01')# %>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+
+# The effects of time on standardized index scores in both an annual and month/week breakout
+date_index_reg <- feols(index_stand ~ start_mo_week + schid, data = date_index)
+year_index_reg <- feols(index_stand ~ start_year + schid, data = date_index)
+etable(date_index_reg, year_index_reg)
+
+# The effects of school selection on standardized index scores
+school_index_fe_reg <- feols(index_stand ~ schid | start_year, data = date_index)
+school_index_reg <- feols(index_stand ~ schid + start_year, data = date_index)
+etable(school_index_reg, school_index_fe_reg)
+
+
+```
+
+None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. 
+  
+Load as PNG File 
+```{r Graphics, echo = TRUE, warning=FALSE, error=FALSE}
+# Runs as apotential base but is otherwise useless
+date_index2013 <- date_index %>%
+  filter(start_year == '2013-01-01') 
+date_index2014 <- date_index %>%
+  filter(start_year == '2014-01-01')
+date_index2015 <- date_index %>%
+  filter(start_year == '2015-01-01')
+date_index2016 <- date_index %>%
+  filter(start_year == '2016-01-01')
+ggplot() + 
+  geom_line(data = date_index2013, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2013'))+
+  geom_line(data = date_index2014, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2014'))+
+  geom_line(data = date_index2015, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2015'))+
+  geom_line(data = date_index2016, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2016'))
+
+
+```
