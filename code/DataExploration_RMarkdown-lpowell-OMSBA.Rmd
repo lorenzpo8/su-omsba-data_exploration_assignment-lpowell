@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Since the release of the College Scorecard in September 2015 student enrollment has been directed towards high-earning institutions.
+Since the release of the College Scorecard in September 2015 student enrollment has been directed towards high-earning institutions. My lack of skill with R has prevented me from being able to clearly demonstrate this graphically and with a cleaned regression model. This will be amended in a future commit; at present a series of multivariate regression models to support this hypothesis have been provided with adequate controls, high degree of statistical significance across models, and different regression types with a consistent objective. 
 
 
 Load the necessary packages 
@@ -87,8 +87,23 @@ merge2016 <- big_merge_stand %>%
 
 ```
 
+10 year median earnings can be identified by the three following groups:
+  Low:    0 -31100
+  Med:    31101 - 44600
+  High:   44601- 166200 
+Though only average values in 3 tiers were calculated there is evidence of left skewed distirbution, a T-test would be usefull for small sub-sample regression to properly consider the impact of high earning outliers. 
+```{r Earnings Percentiles, echo = TRUE, warning=FALSE, error=FALSE}
+# Use percentile values to compare index rends
+quantile_dat <- as.numeric(big_merge_stand$md_earn_wne_p10)
+quant_dat <- na.omit(quantile_dat)
+quantile(quant_dat, c( 0.25, 0.75, 1))
 
-Over time, the average 10-year earnings after enrollment is expected to change by -0.037 units; however, when controlling for the standardized-index value there will be a 0.4274 unit change for a 1 unit increase in enrollment year. When controlling for standardized-index, our hypothesis supported at the 5% significance level.
+# Rough distribution plot of 10 year earnings associated with index scores
+quant_plot <- plot(quantile(quant_dat, c( 0.25, 0.75, 1 )))
+('../su-omsba-data_exploration_assignment-lpowell/quant_plot.png')
+```
+
+Over time, the average 10-year earnings after enrollment is expected to change by -0.037 units; however, when controlling for the standardized-index value there will be a 0.4274 unit change for a 1 unit increase in enrollment year. When controlling for standardized-index scores, our hypothesis supported at the 5% significance level. These statistics provide insight on the expected relationship we should expect to see between overall enrollment volume and and index scores; if enrollment period did not have a notable association with enrollment volume, then 10 year median earnings and index scores should be neutral or unrelated to enrollment.
 ```{r Enrollment Year & Earnings, echo = TRUE, warning=FALSE, error=FALSE}
 # Year o enrollment has a significant negative association with 10 year earnings // we see the opposite relationship in the setting of index rating of 
 year_start_earn <- feols(as.numeric(md_earn_wne_p10) ~ start_year, data = big_merge_stand)
@@ -99,16 +114,18 @@ summary(year_start_earn_con_ind)
 
 ```
 
-
-```{r Earnings & Debt, echo = TRUE, warning=FALSE, error=FALSE}
-# MEDIAN EARNINGS ASSOCIATED W/ DEBT
-
+The section below is an exploratory one demonstrating that greater '10 Year Earnings' tends to have a significant negative association with "Average Debt'. Because I did not manage to group earnings as 'Low', 'Med', or 'High', each earning group is included in the regression table.
+```{r Debt & Earnings, echo = TRUE, warning=FALSE, error=FALSE}
+# Median debt associated with earnings
 med_earn_debt_school_df <- distinct(select(big_merge_stand, schname, md_earn_wne_p10, GRAD_DEBT_MDN_SUPP))
 med_earn_debt_school_fe_reg <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 | schname, data = big_merge_stand)
-
+med_earn_debt_school_fe_reg2 <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 + start_year| index_stand, data = big_merge_stand)
+med_earn_debt_school_fe_reg_het <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 + start_year| index_stand, data = big_merge_stand, vcov = 'hetero')
 ```
 
-
+The fixed-effects model 'index_enroll_reg' showed to have the best predictive properties of my multivariate regression models. Its interpretation in the setting of observed fixed variale effects of '10 Year Earnings', 'Post-Grad Debt', and 'Institution Locale', a 1 unit change in the 'Enrollment Period' is associated with a -0.0005 unit change in the 'Standardized Index Score'.
+Another notable model which controls for 'Institution Name' to hopefully avoid an unobserved effect of institution prestice. 'date/year_index_reg' differ in enrollment period level from month & week to annual intervals. These model's do not account for the aforementioned post-graduate financial outcomes but have comparable R2 values; however these models suggest a strong positive relationship between 'Enrollment Period' and 'Standardized Index Score'.
+Had I managed to apporpriately group the data by quantile as calculated above, Dummy variables could have been used in either set of model's to avoid the slough of values in the regression table like that of 'med_earn_debt_school_fe_reg' and its alternates.
 ```{r Standardized Index Ratings & Enrollment Period, echo = TRUE, warning=FALSE, error=FALSE}
 # Index by time
 date_index <- select(big_merge_stand, schname, schid, start_mo_week, start_year, index, index_stand) %>%
@@ -137,12 +154,12 @@ school_index_fe_reg <- feols(index_stand ~ schid | start_year, data = date_index
 school_index_reg <- feols(index_stand ~ schid + start_year, data = date_index)
 etable(school_index_reg, school_index_fe_reg)
 
-
+# Standardized index associated with enrollment period  //  includes FE's fpr 10 year earnings and median debt
+index_enroll_reg <- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DEBT_MDN_SUPP + LOCALE, data = big_merge_stand)
+etable(index_enroll_reg)
 ```
 
-None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. 
-  
-Load as PNG File 
+None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. Some of the remaining scrap lines can be reviewed in in 'DAE_explore_data.R'. Cluttered data and long run-time's made it difficult to generate a clean visualization. I have begun a lengthy code chunk attempting to do so, an update will be provided in a future . 
 ```{r Graphics, echo = TRUE, warning=FALSE, error=FALSE}
 # Runs as apotential base but is otherwise useless
 date_index2013 <- date_index %>%

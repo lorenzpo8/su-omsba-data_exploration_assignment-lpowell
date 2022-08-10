@@ -45,7 +45,7 @@ name_link <- read_csv('C:/Users/loren/OneDrive/Desktop/SeattleU/5300 Applied Eco
 
 TUT_files <- list.files(path = 'C:/Users/loren/OneDrive/Desktop/SeattleU/5300 Applied Econometrics/Data Exploration Assignment/su-omsba-data_exploration_assignment-lpowell/Lab3_Rawdata',
                           pattern = 'trends_up_to_', full.names = TRUE)
-TUT_files_git <- list.files(path = '../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/',
+TUT_files_git <- list.files(path = '../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/Lab3_Rawdata',
                        pattern = 'trends_up_to_', full.names = TRUE)
 
 
@@ -172,26 +172,29 @@ enroll_date_earn_bar <- big_merge_stand %>%
   ggplot(aes(x = start_year)) + geom_bar()
 
 
-# RUNS AND IS USEFUL BASE BUT UGLY
+
 date_index2013 <- date_index %>%
-  filter(start_year == '2013-01-01') 
+  filter(start_year == '2013-01-01') #%>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+
 date_index2014 <- date_index %>%
-  filter(start_year == '2014-01-01')
+  filter(start_year == '2014-01-01')# %>%
+  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+
 date_index2015 <- date_index %>%
   filter(start_year == '2015-01-01')
+
 date_index2016 <- date_index %>%
   filter(start_year == '2016-01-01')
+
+
+# RUNS AND IS USEFUL BASE BUT UGLY
 ggplot() + 
   geom_line(data = date_index2013, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2013'))+
   geom_line(data = date_index2014, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2014'))+
   geom_line(data = date_index2015, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2015'))+
   geom_line(data = date_index2016, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2016'))
 
-ggplot() + 
-  geom_point(data = date_index2013, mapping = aes(x = start_mo_week, y = count(schid), color = '2013'))+
-  geom_point(data = date_index2014, mapping = aes(x = start_mo_week, y = count(schid), color = '2014'))+
-  geom_point(data = date_index2015, mapping = aes(x = start_mo_week, y = count(schid), color = '2015'))+
-  geom_point(data = date_index2016, mapping = aes(x = start_mo_week, y = count(schid), color = '2016'))
 
 # observation count by schoolID  -**
 ggplot()+
