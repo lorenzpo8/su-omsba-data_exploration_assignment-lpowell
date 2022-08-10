@@ -75,16 +75,24 @@ TUT_standard <- TUT_mutate %>%
 big_merge_stand <- inner_join(name_link, TUT_standard, by = 'schname')
 big_merge_stand <- inner_join(big_merge_stand, scorecard, by = 'opeid')
 
-# Annualized Merge Data 
-merge2013 <- big_merge_stand %>%
-  filter(start_year == '2013-01-01')
-merge2014 <- big_merge_stand %>%
-  filter(start_year == '2014-01-01')
-merge2015 <- big_merge_stand %>%
-  filter(start_year == '2015-01-01')
-merge2016 <- big_merge_stand %>%
-  filter(start_year == '2016-01-01')
+# A mutated merge with percentile data grouping 10 year income of graduates into classes 'Low', 'Med', 'High'
+perc_merge <- big_merge_stand %>%
+  mutate(inc_group = case_when(
+    between(as.numeric(md_earn_wne_p10), 0, 31100) ~ "Low",
+    between(as.numeric(md_earn_wne_p10), 31101, 44600) ~ "Med",
+    between(as.numeric(md_earn_wne_p10), 44601, 166200) ~ "High",
+    FALSE ~ NA_character_)) %>%
+  group_by(schname, keyword, inc_group)
 
+# Annualized Merge Data 
+merge2013 <- perc_merge %>%
+  filter(start_year == '2013-01-01')
+merge2014 <- perc_merge %>%
+  filter(start_year == '2014-01-01')
+merge2015 <- perc_merge %>%
+  filter(start_year == '2015-01-01')
+merge2016 <- perc_merge %>%
+  filter(start_year == '2016-01-01')
 ```
 
 10 year median earnings can be identified by the three following groups:
@@ -99,6 +107,10 @@ Though only average values in 3 tiers were calculated there is evidence of left 
 quantile_dat <- as.numeric(big_merge_stand$md_earn_wne_p10)
 quant_dat <- na.omit(quantile_dat)
 quantile(quant_dat, c( 0.25, 0.75, 1))
+
+low_inc <- (0:31100)
+med_inc <- (31101:44600)
+high_inc <- (44601:166200)
 
 # Rough distribution plot of 10 year earnings associated with index scores
 quant_plot <- plot(quantile(quant_dat, c( 0.25, 0.75, 1 )))
@@ -161,7 +173,15 @@ index_enroll_reg <- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DE
 etable(index_enroll_reg)
 ```
 
-None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. Some of the remaining scrap lines can be reviewed in in 'DAE_explore_data.R'. Cluttered data and long run-time's made it difficult to generate a clean visualization. I have begun a lengthy code chunk attempting to do so, an update will be provided in a future . 
+When running regression similar regression model's with 'Earnings Class' but focused on institution 'schid' choice, it can be understood that a 1 unit increase in the 'Enrollment Period' is associated with reduced likelihood (-0.102 units) to enroll at that institution; interestingly the location of the institution was also shown to be significant but its impact on the overall model was negligible. Adding the fixed effect variable for 'Average Debt' also reduced reliability, my exploratory research showed that both '10 Year Earnings' and 'Average Debt' indicators of 'Earnings Class'; though not an outright hindrance, removal of debt from the fixed effects model added marginal improvement in statistical significance whereas its presence would have provided incremental improvements to within group residuals (within R2).
+```{r Institution & Earning Class, echo = TRUE, warning=FALSE, error=FALSE}
+# Median debt associated with earnings
+school_enroll_inc <- feols(schid ~ start_mo_week + index_stand + inc_group, data = perc_merge)
+school_enroll_inc_fe <- feols(schid ~ start_mo_week | index_stand + inc_group, data = perc_merge)
+etable(school_enroll_inc, school_enroll_inc_fe)
+```
+
+None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. Some of the remaining scrap lines can be reviewed in in 'DAE_explore_data.R'. Cluttered data and long run-time's made it difficult to generate a clean visualization. The second graphic which compares 'Standardized Index Scores' grouped by 10 year 'Earnings Class' can be interpreted by looking at the slope of the observed line from the year start. There is a clear graphical correlation between 'Enrollment Period' and Index score, looking at the observation count over time by 'Earnings Class' also indicates growth in enrollment volume. 
 ```{r Graphics, echo = TRUE, warning=FALSE, error=FALSE}
 # Runs as apotential base but is otherwise useless
 date_index2013 <- date_index %>%
@@ -178,5 +198,17 @@ ggplot() +
   geom_line(data = date_index2015, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2015'))+
   geom_line(data = date_index2016, mapping = aes(x = month(start_mo_week), y = mean(index_stand), color = '2016'))
 
+# An unclear visual representation of a clear increase in volume of high earning institutions // may be interpreted as increased attention
+inc_group_low<- perc_merge %>%
+  filter(inc_group == 'Low') 
+inc_group_med<- perc_merge %>%
+  filter(inc_group == 'Med')
+inc_group_high<- perc_merge %>%
+  filter(inc_group == 'High')
+
+ggplot() + 
+  geom_line(data = inc_group_low, mapping = aes(x = start_year, y = index_stand, color = 'low'))+
+  geom_line(data = inc_group_med, mapping = aes(x = start_year, y = index_stand, color = 'med'))+
+  geom_line(data = inc_group_high, mapping = aes(x = start_year, y = index_stand, color = 'high'))
 
 ```

@@ -82,17 +82,39 @@ big_merge <- inner_join(big_merge, scorecard, by = 'opeid')
 big_merge_stand <- inner_join(name_link, TUT_standard, by = 'schname')
 big_merge_stand <- inner_join(big_merge_stand, scorecard, by = 'opeid')
 
-merge2013 <- big_merge_stand %>%
+perc_merge <- big_merge_stand %>%
+  mutate(inc_group = case_when(
+    between(as.numeric(md_earn_wne_p10), 0, 31100) ~ "Low",
+    between(as.numeric(md_earn_wne_p10), 31101, 44600) ~ "Med",
+    between(as.numeric(md_earn_wne_p10), 44601, 166200) ~ "High",
+    FALSE ~ NA_character_)) %>%
+  group_by(schname, keyword, inc_group)
+
+merge2013 <- perc_merge %>%
   filter(start_year == '2013-01-01') #%>%
 
-merge2014 <- big_merge_stand %>%
+merge2014 <- perc_merge %>%
   filter(start_year == '2014-01-01')# %>%
 
-merge2015 <- big_merge_stand %>%
+merge2015 <- perc_merge %>%
   filter(start_year == '2015-01-01')
 
-merge2016 <- big_merge_stand %>%
+merge2016 <- perc_merge %>%
   filter(start_year == '2016-01-01')
+
+
+# Use percentile values to compare index rends
+quantile_dat <- as.numeric(big_merge_stand$md_earn_wne_p10)
+quant_dat <- na.omit(quantile_dat)
+quantile(quant_dat, c( 0.25, 0.75, 1))
+
+# Rough distribution plot of 10 year earnings associated with index scores
+quant_plot <- plot(quantile(quant_dat, c( 0.25, 0.75, 1 )))
+('../su-omsba-data_exploration_assignment-lpowell/quant_plot.png')
+
+low_inc <- (0:31100)
+med_inc <- (31101:44600)
+high_inc <- (44601:166200)
 
 
 
@@ -143,6 +165,18 @@ year_start_earn_con_ind <- feols(as.numeric(md_earn_wne_p10) ~ start_year | inde
 etable(year_start_earn, year_start_earn_con_ind)
 summary(year_start_earn_con_ind)
 
+school_enroll_inc <- feols(schid ~ start_mo_week + index_stand + inc_group, data = perc_merge)
+school_enroll_inc_fe <- feols(schid ~ start_mo_week | index_stand + inc_group + GRAD_DEBT_MDN_SUPP, data = perc_merge)
+etable(school_enroll_inc, school_enroll_inc_fe)
+
+school_enroll_inc <- feols(schid ~ start_mo_week + index_stand + inc_group + GRAD_DEBT_MDN_SUPP, data = perc_merge)
+
+
+
+for schname in perc_merge
+
+
+
 
 
 ggplot()+
@@ -175,11 +209,11 @@ enroll_date_earn_bar <- big_merge_stand %>%
 
 date_index2013 <- date_index %>%
   filter(start_year == '2013-01-01') #%>%
-  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+#ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
 
 date_index2014 <- date_index %>%
   filter(start_year == '2014-01-01')# %>%
-  #ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
+#ggplot(aes(x = start_year, y = index-index_stand, color = start_year)) + geom_line()
 
 date_index2015 <- date_index %>%
   filter(start_year == '2015-01-01')
@@ -198,7 +232,28 @@ ggplot() +
 
 # observation count by schoolID  -**
 ggplot()+
-  geom_bar(data = big_merge_stand, mapping = aes(x = schid), na.rm = FALSE)
+  geom_bar(data = perc_merge, mapping = aes(x = inc_group), na.rm = FALSE)
+ggplot()+
+  geom_point(data = perc_merge, mapping = aes(x = month(start_mo_week), y = index_stand), na.rm = FALSE)
+
+
+inc_group_low<- perc_merge %>%
+  filter(inc_group == 'Low') 
+inc_group_med<- perc_merge %>%
+  filter(inc_group == 'Med')
+inc_group_high<- perc_merge %>%
+  filter(inc_group == 'High')
+
+ggplot() + 
+  geom_line(data = inc_group_low, mapping = aes(x = start_year, y = index_stand, color = 'low'))+
+  geom_line(data = inc_group_med, mapping = aes(x = start_year, y = index_stand, color = 'med'))+
+  geom_line(data = inc_group_high, mapping = aes(x = start_year, y = index_stand, color = 'high'))
+
+
+index_enroll_reg_perc <- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DEBT_MDN_SUPP + inc_group, data = perc_merge)
+etable(index_enroll_reg_perc)
+
+
 
 ggplot() + 
   geom_bar(data = date_index2013, mapping = aes(x = month(start_mo_week), color = '2013'))+
