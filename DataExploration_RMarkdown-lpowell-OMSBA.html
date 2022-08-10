@@ -371,7 +371,13 @@ pre code {
 
 
 <p>Since the release of the College Scorecard in September 2015 student
-enrollment has been directed towards high-earning institutions.</p>
+enrollment has been directed towards high-earning institutions. My lack
+of skill with R has prevented me from being able to clearly demonstrate
+this graphically and with a cleaned regression model. This will be
+amended in a future commit; at present a series of multivariate
+regression models to support this hypothesis have been provided with
+adequate controls, high degree of statistical significance across
+models, and different regression types with a consistent objective.</p>
 <p>Load the necessary packages</p>
 <pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
 <pre><code>## ✔ ggplot2 3.3.6     ✔ purrr   0.3.4
@@ -552,11 +558,32 @@ merge2015 &lt;- big_merge_stand %&gt;%
   filter(start_year == &#39;2015-01-01&#39;)
 merge2016 &lt;- big_merge_stand %&gt;%
   filter(start_year == &#39;2016-01-01&#39;)</code></pre>
+<p>10 year median earnings can be identified by the three following
+groups: Low: 0 -31100 Med: 31101 - 44600 High: 44601- 166200 Though only
+average values in 3 tiers were calculated there is evidence of left
+skewed distribution, a T-test would be useful for small sub-sample
+regression to properly consider the impact of high earning outliers.</p>
+<pre class="r"><code># Use percentile values to compare index rends
+quantile_dat &lt;- as.numeric(big_merge_stand$md_earn_wne_p10)
+quant_dat &lt;- na.omit(quantile_dat)
+quantile(quant_dat, c( 0.25, 0.75, 1))</code></pre>
+<pre><code>##    25%    75%   100% 
+##  31100  44600 166200</code></pre>
+<pre class="r"><code># Rough distribution plot of 10 year earnings associated with index scores
+quant_plot &lt;- plot(quantile(quant_dat, c( 0.25, 0.75, 1 )))</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAA5FBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZmYAZrY6AAA6OgA6Ojo6OmY6ZmY6ZpA6ZrY6kJA6kLY6kNtmAABmOgBmOjpmOmZmZjpmZmZmZpBmkJBmkLZmkNtmtrZmtttmtv+QOgCQOjqQZgCQZjqQZmaQkGaQkJCQkLaQtraQttuQtv+Q2/+2ZgC2Zjq2kDq2kGa2kJC2kLa2tpC2tra2ttu225C227a229u22/+2///bkDrbkGbbtmbbtpDbtrbbttvb25Db27bb29vb2//b/7bb////tmb/25D/27b/29v//7b//9v///8cYVDHAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3dbWMTV5qgYSkhiwKYnQATZ+hJskNmGyYmzGB2IE7MNmZjTKT//39WJVmybMuO66lT51SVr+tDBxtjSch9Uy+nnhrNAAgZlX4CAH0loABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSg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" width="672" /></p>
+<pre class="r"><code>(&#39;../su-omsba-data_exploration_assignment-lpowell/quant_plot.png&#39;)</code></pre>
+<pre><code>## [1] &quot;../su-omsba-data_exploration_assignment-lpowell/quant_plot.png&quot;</code></pre>
 <p>Over time, the average 10-year earnings after enrollment is expected
 to change by -0.037 units; however, when controlling for the
 standardized-index value there will be a 0.4274 unit change for a 1 unit
-increase in enrollment year. When controlling for standardized-index,
-our hypothesis supported at the 5% significance level.</p>
+increase in enrollment year. When controlling for standardized-index
+scores, our hypothesis supported at the 5% significance level. These
+statistics provide insight on the expected relationship we should expect
+to see between overall enrollment volume and and index scores; if
+enrollment period did not have a notable association with enrollment
+volume, then 10 year median earnings and index scores should be neutral
+or unrelated to enrollment.</p>
 <pre class="r"><code># Year o enrollment has a significant negative association with 10 year earnings // we see the opposite relationship in the setting of index rating of 
 year_start_earn &lt;- feols(as.numeric(md_earn_wne_p10) ~ start_year, data = big_merge_stand)</code></pre>
 <pre><code>## NOTE: 106,078 observations removed because of NA values (LHS: 99,258, RHS: 7,759).</code></pre>
@@ -588,12 +615,36 @@ year_start_earn &lt;- feols(as.numeric(md_earn_wne_p10) ~ start_year, data = big
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## RMSE: 11,655.2     Adj. R2: 0.009667
 ##                  Within R2: 1.486e-4</code></pre>
-<pre class="r"><code># MEDIAN EARNINGS ASSOCIATED W/ DEBT
-
+<p>The section below is an exploratory one demonstrating that greater
+‘10 Year Earnings’ tends to have a significant negative association with
+“Average Debt’. Because I did not manage to group earnings as ‘Low’,
+‘Med’, or ‘High’, each earning group is included in the regression
+table.</p>
+<pre class="r"><code># Median debt associated with earnings
 med_earn_debt_school_df &lt;- distinct(select(big_merge_stand, schname, md_earn_wne_p10, GRAD_DEBT_MDN_SUPP))
 med_earn_debt_school_fe_reg &lt;- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 | schname, data = big_merge_stand)</code></pre>
 <pre><code>## NOTE: 92,691 observations removed because of NA values (LHS: 92,691).</code></pre>
 <pre><code>## Variables &#39;md_earn_wne_p10111500&#39;, &#39;md_earn_wne_p10112900&#39; and 468 others have been removed because of collinearity (see $collin.var).</code></pre>
+<pre class="r"><code>med_earn_debt_school_fe_reg2 &lt;- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 + start_year| index_stand, data = big_merge_stand)</code></pre>
+<pre><code>## NOTE: 100,545 observations removed because of NA values (LHS: 92,691, RHS: 7,759, Fixed-effects: 8,665).</code></pre>
+<pre class="r"><code>med_earn_debt_school_fe_reg_het &lt;- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 + start_year| index_stand, data = big_merge_stand, vcov = &#39;hetero&#39;)</code></pre>
+<pre><code>## NOTE: 100,545 observations removed because of NA values (LHS: 92,691, RHS: 7,759, Fixed-effects: 8,665).</code></pre>
+<p>The fixed-effects model ‘index_enroll_reg’ showed to have the best
+predictive properties of my multivariate regression models. Its
+interpretation in the setting of observed fixed variale effects of ‘10
+Year Earnings’, ‘Post-Grad Debt’, and ‘Institution Locale’, a 1 unit
+change in the ‘Enrollment Period’ is associated with a -0.0005 unit
+change in the ‘Standardized Index Score’. Another notable model which
+controls for ‘Institution Name’ to hopefully avoid an unobserved effect
+of institution prestige. ‘date/year_index_reg’ differ in enrollment
+period level from month &amp; week to annual intervals. These model’s do
+not account for the aforementioned post-graduate financial outcomes but
+have comparable R2 values; however these models suggest a strong
+positive relationship between ‘Enrollment Period’ and ‘Standardized
+Index Score’. Had I managed to apporpriately group the data by quantile
+as calculated above, Dummy variables could have been used in either set
+of model’s to avoid the slough of values in the regression table like
+that of ‘med_earn_debt_school_fe_reg’ and its alternates.</p>
 <pre class="r"><code># Index by time
 date_index &lt;- select(big_merge_stand, schname, schid, start_mo_week, start_year, index, index_stand) %&gt;%
   mutate(start_year = floor_date(start_mo_week, &#39;year&#39;)) %&gt;%
@@ -652,10 +703,31 @@ school_index_fe_reg &lt;- feols(index_stand ~ schid | start_year, data = date_in
 ## Within R2                          --              0.00063
 ## ---
 ## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code># Standardized index associated with enrollment period  //  includes FE&#39;s fpr 10 year earnings and median debt
+index_enroll_reg &lt;- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DEBT_MDN_SUPP + LOCALE, data = big_merge_stand)</code></pre>
+<pre><code>## NOTE: 8,665 observations removed because of NA values (LHS: 8,665, RHS: 7,759).</code></pre>
+<pre class="r"><code>etable(index_enroll_reg)</code></pre>
+<pre><code>##                        index_enroll_reg
+## Dependent Var.:             index_stand
+##                                        
+## start_mo_week      -0.0005*** (3.68e-5)
+## Fixed-Effects:     --------------------
+## md_earn_wne_p10                     Yes
+## GRAD_DEBT_MDN_SUPP                  Yes
+## LOCALE                              Yes
+## __________________ ____________________
+## S.E.: Clustered     by: md_earn_wne_p10
+## Observations                  1,543,918
+## R2                              0.16412
+## Within R2                       0.02858
+## ---
+## Signif. codes: 0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
 <p>None of my attempts at creating a useful graph were successful. Most
-of my time has been spent trying to create appropriate variable
-levels.</p>
-<p>Load as PNG File</p>
+of my time has been spent trying to create appropriate variable levels.
+Some of the remaining scrap lines can be reviewed in in
+‘DAE_explore_data.R’. Cluttered data and long run-time’s made it
+difficult to generate a clean visualization. I have begun a lengthy code
+chunk attempting to do so, an update will be provided in a future .</p>
 <pre class="r"><code># Runs as apotential base but is otherwise useless
 date_index2013 &lt;- date_index %&gt;%
   filter(start_year == &#39;2013-01-01&#39;) 
