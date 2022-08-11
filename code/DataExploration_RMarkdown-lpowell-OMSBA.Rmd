@@ -103,7 +103,7 @@ merge2016 <- perc_merge %>%
   Med:    31101 - 44600
   High:   44601- 166200 
   
-Though only average values in 3 tiers were calculated there is evidence of left skewed distribution, a T-test would be useful for small sub-sample regression to properly consider the impact of high earning outliers. 
+Though only average values in 3 tiers were calculated there is evidence of left skewed distribution, a T-test would be useful for small sub-sample regression to properly consider the impact of high earning outliers. I found F-tests to be better suited to my analysis as nearly all my exploratory model's were multivariate. 
 ```{r Earnings Percentiles, echo = TRUE, warning=FALSE, error=FALSE}
 # Use percentile values to compare index rends
 quantile_dat <- as.numeric(big_merge_stand$md_earn_wne_p10)
@@ -175,7 +175,7 @@ index_enroll_reg <- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DE
 etable(index_enroll_reg)
 ```
 
-When running regression similar regression model's with 'Earnings Class' but focused on institution 'schid' choice, it can be understood that a 1 unit increase in the 'Enrollment Period' is associated with reduced likelihood (-0.102 units) to enroll at that institution; interestingly the location of the institution was also shown to be significant but its impact on the overall model was negligible. Adding the fixed effect variable for 'Average Debt' also reduced reliability, my exploratory research showed that both '10 Year Earnings' and 'Average Debt' indicators of 'Earnings Class'; though not an outright hindrance, removal of debt from the fixed effects model added marginal improvement in statistical significance whereas its presence would have provided incremental improvements to within group residuals (within R2).
+When running regression similar regression model's with  attention to 'Enrollment Period' and institution, 'schid', choice, it can be understood that a 1 unit increase in the 'Enrollment Period' is associated with reduced likelihood (-0.102 units) to enroll at that institution when controlling for 'Earning Class' and 'Standardized Index Score'; interestingly the location of the institution was also shown to be significant but its impact on the overall model was negligible. Adding the fixed effect variable for 'Average Debt' also reduced reliability, my exploratory research showed that both '10 Year Earnings' and 'Average Debt' indicators of 'Earnings Class'; though not an outright hindrance, removal of debt from the fixed effects model added marginal improvement in statistical significance whereas its presence would have provided incremental improvements to within group residuals (within R2).
 ```{r Institution & Earning Class, echo = TRUE, warning=FALSE, error=FALSE}
 # Median debt associated with earnings
 school_enroll_inc <- feols(schid ~ start_mo_week + index_stand + inc_group, data = perc_merge)
