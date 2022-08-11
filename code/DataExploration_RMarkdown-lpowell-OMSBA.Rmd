@@ -2,7 +2,9 @@
 title: "Data Exploration Assignment"
 author: "Lorenzo Powell"
 date: "2022-08-02"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -10,9 +12,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-Since the release of the College Scorecard in September 2015 student enrollment has been directed towards high-earning institutions. My lack of skill with R has prevented me from being able to clearly demonstrate this graphically and with a cleaned regression model. This will be amended in a future commit; at present a series of multivariate regression models to support this hypothesis have been provided with adequate controls, high degree of statistical significance across models, and different regression types with a consistent objective. 
-
-
+Since the release of the College Scorecard in September 2015 student enrollment has been directed towards high-earning institutions. When grouping institutions by 10 year earnings in 3 tiers, the effect of enrollment period is more notable at the month/year level however the findings contradict expectations; whereas without earrings groups enrollment period's impact on academic enrollment to high-earning institutions is largely positive. At present a series of multivariate regression models to support this hypothesis have been provided with adequate controls, high degree of statistical significance across models, and different regression types with a consistent objective. The preferred regression model with earnings groups included has been included for comparative analysis.
+Two attempts at graphically representing the observed data have are appended to the end of this write-up, but they offer little more than a rough-template for future visualizations.
+ 
 Load the necessary packages 
 ```{r packages, echo = FALSE, warning=FALSE, error=FALSE}
 library(tidyverse)
@@ -35,7 +37,7 @@ library(lubridate)
 Load the data files from github repository
 ```{r Load Data, echo = FALSE, warning=FALSE, error=FALSE, collapse=TRUE}
 
-scorecard <-scorecard <- read_csv('../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/Most+Recent+Cohorts+(Scorecard+Elements).csv') %>%
+scorecard <- read_csv('../su-omsba-data_exploration_assignment-lpowell/data/Lab3_Rawdata/Most+Recent+Cohorts+(Scorecard+Elements).csv') %>%
   rename(opeid = OPEID) %>%
   rename(unitid = UNITID) %>%
   rename(md_earn_wne_p10 = 'md_earn_wne_p10-REPORTED-EARNINGS')
@@ -53,7 +55,7 @@ TUT_map <- map_df(TUT_files, read_csv)
 ```
 
 
-The following served as my base mutations of the provided data sets. Very little was changed, the goal was to use these data-frames as references during my analysis.
+The following served as my base mutations of the provided data sets. Very little was changed, the goal was to use these data-frames as references during my exploration.
 
 ```{r Mutations, echo = TRUE, warning=FALSE, error=FALSE}
 # Trends Up TO (TUT) files were compiled in TUT_map // this mutation only serves to ease sorting 
@@ -128,7 +130,7 @@ summary(year_start_earn_con_ind)
 
 ```
 
-The section below is an exploratory one demonstrating that greater '10 Year Earnings' tends to have a significant negative association with "Average Debt'. Because I did not manage to group earnings as 'Low', 'Med', or 'High', each earning group is included in the regression table.
+The section below is an exploratory one demonstrating that greater '10 Year Earnings' tends to have a significant negative association with "Average Debt'. Because I did not manage to group earnings as 'Low', 'Med', or 'High', each earning group is included in the regression table.  ***
 ```{r Debt & Earnings, echo = TRUE, warning=FALSE, error=FALSE}
 # Median debt associated with earnings
 med_earn_debt_school_df <- distinct(select(big_merge_stand, schname, md_earn_wne_p10, GRAD_DEBT_MDN_SUPP))
@@ -137,9 +139,9 @@ med_earn_debt_school_fe_reg2 <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_w
 med_earn_debt_school_fe_reg_het <- feols(as.numeric(GRAD_DEBT_MDN_SUPP) ~ md_earn_wne_p10 + start_year| index_stand, data = big_merge_stand, vcov = 'hetero')
 ```
 
-The fixed-effects model 'index_enroll_reg' showed to have the best predictive properties of my multivariate regression models. Its interpretation in the setting of observed fixed variale effects of '10 Year Earnings', 'Post-Grad Debt', and 'Institution Locale', a 1 unit change in the 'Enrollment Period' is associated with a -0.0005 unit change in the 'Standardized Index Score'.
+The fixed-effects model 'index_enroll_reg' showed to have the best predictive properties of my multivariate regression models. Its interpretation in the setting of observed fixed variable effects of '10 Year Earnings', 'Post-Grad Debt', and 'Institution Locale', a 1 unit change in the 'Enrollment Period' is associated with a -0.0005 unit change in the 'Standardized Index Score'.
 Another notable model which controls for 'Institution Name' to hopefully avoid an unobserved effect of institution prestige. 'date/year_index_reg' differ in enrollment period level from month & week to annual intervals. These model's do not account for the aforementioned post-graduate financial outcomes but have comparable R2 values; however these models suggest a strong positive relationship between 'Enrollment Period' and 'Standardized Index Score'.
-Had I managed to apporpriately group the data by quantile as calculated above, Dummy variables could have been used in either set of model's to avoid the slough of values in the regression table like that of 'med_earn_debt_school_fe_reg' and its alternates.
+Had I managed to appropriately group the data by quantile as calculated above, Dummy variables could have been used in either set of model's to avoid the slough of values in the regression table like that of 'med_earn_debt_school_fe_reg' and its alternates.
 ```{r Standardized Index Ratings & Enrollment Period, echo = TRUE, warning=FALSE, error=FALSE}
 # Index by time
 date_index <- select(big_merge_stand, schname, schid, start_mo_week, start_year, index, index_stand) %>%
@@ -168,7 +170,7 @@ school_index_fe_reg <- feols(index_stand ~ schid | start_year, data = date_index
 school_index_reg <- feols(index_stand ~ schid + start_year, data = date_index)
 etable(school_index_reg, school_index_fe_reg)
 
-# Standardized index associated with enrollment period  //  includes FE's fpr 10 year earnings and median debt
+# Standardized index associated with enrollment period  //  includes FE's for 10 year earnings and median debt
 index_enroll_reg <- feols(index_stand ~ start_mo_week| md_earn_wne_p10 + GRAD_DEBT_MDN_SUPP + LOCALE, data = big_merge_stand)
 etable(index_enroll_reg)
 ```
@@ -181,9 +183,9 @@ school_enroll_inc_fe <- feols(schid ~ start_mo_week | index_stand + inc_group, d
 etable(school_enroll_inc, school_enroll_inc_fe)
 ```
 
-None of my attempts at creating a useful graph were successful. Most of my time has been spent trying to create appropriate variable levels. Some of the remaining scrap lines can be reviewed in in 'DAE_explore_data.R'. Cluttered data and long run-time's made it difficult to generate a clean visualization. The second graphic which compares 'Standardized Index Scores' grouped by 10 year 'Earnings Class' can be interpreted by looking at the slope of the observed line from the year start. There is a clear graphical correlation between 'Enrollment Period' and Index score, looking at the observation count over time by 'Earnings Class' also indicates growth in enrollment volume. 
+None of my attempts at creating a useful graph were successful. Most of my time was been spent trying to create appropriate variable levels, largely to aid scaling. Some of the remaining scrap lines can be reviewed in in 'DAE_explore_data.R'. Cluttered data and long run-time's made it difficult to generate a clean visualization. The second graphic which compares 'Standardized Index Scores' grouped by 10 year 'Earnings Class' can be interpreted by looking at the slope of the observed line from the year start. There is a clear graphical correlation between 'Enrollment Period' and Index score, looking at the observation count over time by 'Earnings Class' via bar chart also indicates growth in enrollment volume. 
 ```{r Graphics, echo = TRUE, warning=FALSE, error=FALSE}
-# Runs as apotential base but is otherwise useless
+# Runs as a potential base but is otherwise useless
 date_index2013 <- date_index %>%
   filter(start_year == '2013-01-01') 
 date_index2014 <- date_index %>%
